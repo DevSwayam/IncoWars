@@ -158,283 +158,283 @@ describe("Casino Tests", function () {
     }
   });
 
-  // it("Both Alice and Bob should be able to capture planets ", async function () {
-  //   const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
-  //   const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
-  //   const keyword = "battle1";
-  //   const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
-  //   await createTx.wait();
+  it("Both Alice and Bob should be able to capture planets ", async function () {
+    const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
+    const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
+    const keyword = "battle1";
+    const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
+    await createTx.wait();
 
-  //   const battle = await alicePlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Creation:", battle);
+    const battle = await alicePlanetBattle.battles(keyword);
+    console.log("Battle Details after Creation:", battle);
 
-  //   const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
-  //   await joinTx.wait();
+    const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
+    await joinTx.wait();
 
-  //   await awaitAllDecryptionResults();
-  //   await new Promise((res) => setTimeout(() => res(null), 5000));
+    await awaitAllDecryptionResults();
+    await new Promise((res) => setTimeout(() => res(null), 5000));
 
-  //   const battleAfterJoin = await bobPlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Joining:", battleAfterJoin);
+    const battleAfterJoin = await bobPlanetBattle.battles(keyword);
+    console.log("Battle Details after Joining:", battleAfterJoin);
 
-  //   // Alice Capturing Planets
-  //   const universeAliceContract = await ethers.getContractAt(
-  //     "Universe",
-  //     battleAfterJoin.universeAddress,
-  //     this.signers.alice,
-  //   );
-  //   // Retrieve initial energy available for Alice's home planet (assuming it's planet with ID 0)
-  //   let alicePlayerInfo = await universeAliceContract.playerAddressToPlayerInfo(this.signers.alice.address);
-  //   let AliceHomePlanetEnergy = alicePlayerInfo.initialEnergy;
+    // Alice Capturing Planets
+    const universeAliceContract = await ethers.getContractAt(
+      "Universe",
+      battleAfterJoin.universeAddress,
+      this.signers.alice,
+    );
+    // Retrieve initial energy available for Alice's home planet (assuming it's planet with ID 0)
+    let alicePlayerInfo = await universeAliceContract.playerAddressToPlayerInfo(this.signers.alice.address);
+    let AliceHomePlanetEnergy = alicePlayerInfo.initialEnergy;
 
-  //   for (let i = 1; i <= 8; i++) {
-  //     const planet = await universeAliceContract.planets(i);
-  //     console.log("Checking Planet", i, ":", planet);
+    for (let i = 1; i <= 8; i++) {
+      const planet = await universeAliceContract.planets(i);
+      console.log("Checking Planet", i, ":", planet);
 
-  //     if (planet.owner === ethers.ZeroAddress) {
-  //       // Calculate required energy assuming distance affects energy needed linearly
-  //       const distance = await universeAliceContract.calculateDistance(
-  //         alicePlayerInfo.homeCoordinateX,
-  //         alicePlayerInfo.homeCoordinateY,
-  //         planet.x,
-  //         planet.y,
-  //       );
-  //       const requiredEnergy = planet.baseEnergy * distance;
+      if (planet.owner === ethers.ZeroAddress) {
+        // Calculate required energy assuming distance affects energy needed linearly
+        const distance = await universeAliceContract.calculateDistance(
+          alicePlayerInfo.homeCoordinateX,
+          alicePlayerInfo.homeCoordinateY,
+          planet.x,
+          planet.y,
+        );
+        const requiredEnergy = planet.baseEnergy * distance;
 
-  //       console.log(`Energy required to capture planet ${i}: ${requiredEnergy}`);
+        console.log(`Energy required to capture planet ${i}: ${requiredEnergy}`);
 
-  //       if (AliceHomePlanetEnergy >= requiredEnergy) {
-  //         console.log("Capturing Planet", i);
-  //         const captureTx = await universeAliceContract.attackPlanet(0, i, { gasLimit: 1000000 });
-  //         await captureTx.wait();
+        if (AliceHomePlanetEnergy >= requiredEnergy) {
+          console.log("Capturing Planet", i);
+          const captureTx = await universeAliceContract.attackPlanet(0, i, { gasLimit: 1000000 });
+          await captureTx.wait();
 
-  //         // Update home planet energy after the capture attempt
-  //         AliceHomePlanetEnergy -= requiredEnergy;
+          // Update home planet energy after the capture attempt
+          AliceHomePlanetEnergy -= requiredEnergy;
 
-  //         const planetAfterCapture = await universeAliceContract.planets(i);
-  //         console.log("Planet", i, "after capture:", planetAfterCapture);
-  //       } else {
-  //         console.log(
-  //           `Not enough energy to capture planet ${i}. Required: ${requiredEnergy}, Available: ${AliceHomePlanetEnergy}`,
-  //         );
-  //       }
-  //     }
-  //   }
+          const planetAfterCapture = await universeAliceContract.planets(i);
+          console.log("Planet", i, "after capture:", planetAfterCapture);
+        } else {
+          console.log(
+            `Not enough energy to capture planet ${i}. Required: ${requiredEnergy}, Available: ${AliceHomePlanetEnergy}`,
+          );
+        }
+      }
+    }
 
-  //   // Bob Capturing planets
-  //   const universeBobContract = await ethers.getContractAt(
-  //     "Universe",
-  //     battleAfterJoin.universeAddress,
-  //     this.signers.bob,
-  //   );
+    // Bob Capturing planets
+    const universeBobContract = await ethers.getContractAt(
+      "Universe",
+      battleAfterJoin.universeAddress,
+      this.signers.bob,
+    );
 
-  //   // Retrieve initial energy available for Alice's home planet (assuming it's planet with ID 0)
-  //   let bobPlayerInfo = await universeBobContract.playerAddressToPlayerInfo(this.signers.bob.address);
-  //   let bobHomePlanetEnergy = bobPlayerInfo.initialEnergy;
+    // Retrieve initial energy available for Alice's home planet (assuming it's planet with ID 0)
+    let bobPlayerInfo = await universeBobContract.playerAddressToPlayerInfo(this.signers.bob.address);
+    let bobHomePlanetEnergy = bobPlayerInfo.initialEnergy;
 
-  //   for (let i = 1; i <= 8; i++) {
-  //     const planet = await universeBobContract.planets(i);
-  //     console.log("Checking Planet", i, ":", planet);
+    for (let i = 1; i <= 8; i++) {
+      const planet = await universeBobContract.planets(i);
+      console.log("Checking Planet", i, ":", planet);
 
-  //     if (planet.owner === ethers.ZeroAddress) {
-  //       // Calculate required energy assuming distance affects energy needed linearly
-  //       const distance = await universeBobContract.calculateDistance(
-  //         bobPlayerInfo.homeCoordinateX,
-  //         bobPlayerInfo.homeCoordinateY,
-  //         planet.x,
-  //         planet.y,
-  //       );
-  //       const requiredEnergy = planet.baseEnergy * distance;
+      if (planet.owner === ethers.ZeroAddress) {
+        // Calculate required energy assuming distance affects energy needed linearly
+        const distance = await universeBobContract.calculateDistance(
+          bobPlayerInfo.homeCoordinateX,
+          bobPlayerInfo.homeCoordinateY,
+          planet.x,
+          planet.y,
+        );
+        const requiredEnergy = planet.baseEnergy * distance;
 
-  //       console.log(`Energy required to capture planet ${i}: ${requiredEnergy}`);
+        console.log(`Energy required to capture planet ${i}: ${requiredEnergy}`);
 
-  //       if (bobHomePlanetEnergy >= requiredEnergy) {
-  //         console.log("Capturing Planet", i);
-  //         const captureTx = await universeBobContract.attackPlanet(0, i, { gasLimit: 1000000 });
-  //         await captureTx.wait();
+        if (bobHomePlanetEnergy >= requiredEnergy) {
+          console.log("Capturing Planet", i);
+          const captureTx = await universeBobContract.attackPlanet(0, i, { gasLimit: 1000000 });
+          await captureTx.wait();
 
-  //         // Update home planet energy after the capture attempt
-  //         bobHomePlanetEnergy -= requiredEnergy;
+          // Update home planet energy after the capture attempt
+          bobHomePlanetEnergy -= requiredEnergy;
 
-  //         const planetAfterCapture = await universeBobContract.planets(i);
-  //         console.log("Planet", i, "after capture:", planetAfterCapture);
-  //       } else {
-  //         console.log(
-  //           `Not enough energy to capture planet ${i}. Required: ${requiredEnergy}, Available: ${bobHomePlanetEnergy}`,
-  //         );
-  //       }
-  //     }
-  //   }
-  // });
+          const planetAfterCapture = await universeBobContract.planets(i);
+          console.log("Planet", i, "after capture:", planetAfterCapture);
+        } else {
+          console.log(
+            `Not enough energy to capture planet ${i}. Required: ${requiredEnergy}, Available: ${bobHomePlanetEnergy}`,
+          );
+        }
+      }
+    }
+  });
 
-  // it("Alice should be able to capture planets", async function () {
-  //   const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
-  //   const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
-  //   const keyword = "battle1";
-  //   const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
-  //   await createTx.wait();
+  it("Alice should be able to capture planets", async function () {
+    const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
+    const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
+    const keyword = "battle1";
+    const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
+    await createTx.wait();
 
-  //   const battle = await alicePlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Creation:", battle);
+    const battle = await alicePlanetBattle.battles(keyword);
+    console.log("Battle Details after Creation:", battle);
 
-  //   const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
-  //   await joinTx.wait();
+    const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
+    await joinTx.wait();
 
-  //   await awaitAllDecryptionResults();
-  //   await new Promise((res) => setTimeout(() => res(null), 5000));
+    await awaitAllDecryptionResults();
+    await new Promise((res) => setTimeout(() => res(null), 5000));
 
-  //   const battleAfterJoin = await bobPlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Joining:", battleAfterJoin);
+    const battleAfterJoin = await bobPlanetBattle.battles(keyword);
+    console.log("Battle Details after Joining:", battleAfterJoin);
 
-  //   const universeAliceContract = await ethers.getContractAt(
-  //     "Universe",
-  //     battleAfterJoin.universeAddress,
-  //     this.signers.alice,
-  //   );
-  //   // Retrieve initial energy available for Alice's home planet (assuming it's planet with ID 0)
-  //   let playerInfo = await universeAliceContract.playerAddressToPlayerInfo(this.signers.alice.address);
-  //   let homePlanetEnergy = playerInfo.initialEnergy;
+    const universeAliceContract = await ethers.getContractAt(
+      "Universe",
+      battleAfterJoin.universeAddress,
+      this.signers.alice,
+    );
+    // Retrieve initial energy available for Alice's home planet (assuming it's planet with ID 0)
+    let playerInfo = await universeAliceContract.playerAddressToPlayerInfo(this.signers.alice.address);
+    let homePlanetEnergy = playerInfo.initialEnergy;
 
-  //   for (let i = 1; i <= 8; i++) {
-  //     const planet = await universeAliceContract.planets(i);
-  //     console.log("Checking Planet", i, ":", planet);
+    for (let i = 1; i <= 8; i++) {
+      const planet = await universeAliceContract.planets(i);
+      console.log("Checking Planet", i, ":", planet);
 
-  //     if (planet.owner === ethers.ZeroAddress) {
-  //       // Calculate required energy assuming distance affects energy needed linearly
-  //       const distance = await universeAliceContract.calculateDistance(
-  //         playerInfo.homeCoordinateX,
-  //         playerInfo.homeCoordinateY,
-  //         planet.x,
-  //         planet.y,
-  //       );
-  //       const requiredEnergy = planet.baseEnergy * distance;
+      if (planet.owner === ethers.ZeroAddress) {
+        // Calculate required energy assuming distance affects energy needed linearly
+        const distance = await universeAliceContract.calculateDistance(
+          playerInfo.homeCoordinateX,
+          playerInfo.homeCoordinateY,
+          planet.x,
+          planet.y,
+        );
+        const requiredEnergy = planet.baseEnergy * distance;
 
-  //       console.log(`Energy required to capture planet ${i}: ${requiredEnergy}`);
+        console.log(`Energy required to capture planet ${i}: ${requiredEnergy}`);
 
-  //       if (homePlanetEnergy >= requiredEnergy) {
-  //         console.log("Capturing Planet", i);
-  //         const captureTx = await universeAliceContract.attackPlanet(0, i, { gasLimit: 1000000 });
-  //         await captureTx.wait();
+        if (homePlanetEnergy >= requiredEnergy) {
+          console.log("Capturing Planet", i);
+          const captureTx = await universeAliceContract.attackPlanet(0, i, { gasLimit: 1000000 });
+          await captureTx.wait();
 
-  //         // Update home planet energy after the capture attempt
-  //         homePlanetEnergy -= requiredEnergy;
+          // Update home planet energy after the capture attempt
+          homePlanetEnergy -= requiredEnergy;
 
-  //         const planetAfterCapture = await universeAliceContract.planets(i);
-  //         console.log("Planet", i, "after capture:", planetAfterCapture);
-  //       } else {
-  //         console.log(
-  //           `Not enough energy to capture planet ${i}. Required: ${requiredEnergy}, Available: ${homePlanetEnergy}`,
-  //         );
-  //       }
-  //     }
-  //   }
-  // });
+          const planetAfterCapture = await universeAliceContract.planets(i);
+          console.log("Planet", i, "after capture:", planetAfterCapture);
+        } else {
+          console.log(
+            `Not enough energy to capture planet ${i}. Required: ${requiredEnergy}, Available: ${homePlanetEnergy}`,
+          );
+        }
+      }
+    }
+  });
 
-  // it("It should be able to Decrypt Random Number battle", async function () {
-  //   const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
-  //   const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
-  //   const keyword = "battle1";
-  //   const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
-  //   await createTx.wait();
+  it("It should be able to Decrypt Random Number battle", async function () {
+    const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
+    const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
+    const keyword = "battle1";
+    const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
+    await createTx.wait();
 
-  //   const battle = await alicePlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Creation:", battle);
+    const battle = await alicePlanetBattle.battles(keyword);
+    console.log("Battle Details after Creation:", battle);
 
-  //   const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
-  //   await joinTx.wait();
+    const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
+    await joinTx.wait();
 
-  //   await awaitAllDecryptionResults();
-  //   await new Promise((res) => setTimeout(() => res(null), 5000));
+    await awaitAllDecryptionResults();
+    await new Promise((res) => setTimeout(() => res(null), 5000));
 
-  //   const battleAfterJoin = await bobPlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Joining:", battleAfterJoin);
+    const battleAfterJoin = await bobPlanetBattle.battles(keyword);
+    console.log("Battle Details after Joining:", battleAfterJoin);
 
-  //   const universeAliceContract = await ethers.getContractAt(
-  //     "Universe",
-  //     battleAfterJoin.universeAddress,
-  //     this.signers.alice,
-  //   );
+    const universeAliceContract = await ethers.getContractAt(
+      "Universe",
+      battleAfterJoin.universeAddress,
+      this.signers.alice,
+    );
 
-  //   const result = await universeAliceContract.splitRandomNumber(1000);
-  //   console.log(result.firstFour);
-  //   console.log(result.secondFour);
-  //   console.log(result.thirdFour);
-  //   console.log(result.lastFour);
-  // });
+    const result = await universeAliceContract.splitRandomNumber(1000);
+    console.log(result.firstFour);
+    console.log(result.secondFour);
+    console.log(result.thirdFour);
+    console.log(result.lastFour);
+  });
 
-  // it("It should be able to create battle", async function () {
-  //   const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
+  it("It should be able to create battle", async function () {
+    const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
 
-  //   const keyword = "battle1";
-  //   const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
-  //   const createReceipt = await createTx.wait();
-  //   console.log("Battle Created Transaction:", createReceipt);
+    const keyword = "battle1";
+    const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
+    const createReceipt = await createTx.wait();
+    console.log("Battle Created Transaction:", createReceipt);
 
-  //   const battle = await alicePlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Creation:", battle);
+    const battle = await alicePlanetBattle.battles(keyword);
+    console.log("Battle Details after Creation:", battle);
 
-  //   assert.equal(battle.creator, this.signers.alice.address, "Creator should be deployer");
-  //   assert.equal(battle.isActive, false, "Battle should not be active");
-  // });
+    assert.equal(battle.creator, this.signers.alice.address, "Creator should be deployer");
+    assert.equal(battle.isActive, false, "Battle should not be active");
+  });
 
-  // it("It should be able to create and join battle", async function () {
-  //   const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
-  //   const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
-  //   const keyword = "battle1";
-  //   const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
-  //   await createTx.wait();
+  it("It should be able to create and join battle", async function () {
+    const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
+    const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
+    const keyword = "battle1";
+    const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
+    await createTx.wait();
 
-  //   const battle = await alicePlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Creation:", battle);
+    const battle = await alicePlanetBattle.battles(keyword);
+    console.log("Battle Details after Creation:", battle);
 
-  //   const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
-  //   await joinTx.wait();
+    const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
+    await joinTx.wait();
 
-  //   await awaitAllDecryptionResults();
-  //   await new Promise((res) => setTimeout(() => res(null), 5000));
+    await awaitAllDecryptionResults();
+    await new Promise((res) => setTimeout(() => res(null), 5000));
 
-  //   const battleAfterJoin = await bobPlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Joining:", battleAfterJoin);
+    const battleAfterJoin = await bobPlanetBattle.battles(keyword);
+    console.log("Battle Details after Joining:", battleAfterJoin);
 
-  //   const universeAliceContract = await ethers.getContractAt(
-  //     "Universe",
-  //     battleAfterJoin.universeAddress,
-  //     this.signers.alice,
-  //   );
-  //   for (let i = 1; i < 9; i++) {
-  //     console.log("The Planet information for ", i, "th planet is = ", await universeAliceContract.planets(i));
-  //   }
-  //   assert.equal(battleAfterJoin.creator, this.signers.alice.address, "Creator should be deployer");
-  //   assert.equal(battleAfterJoin.joiner, this.signers.bob.address, "Joiner should be tester");
-  //   assert.equal(battleAfterJoin.isActive, true, "Battle should be active");
-  // });
+    const universeAliceContract = await ethers.getContractAt(
+      "Universe",
+      battleAfterJoin.universeAddress,
+      this.signers.alice,
+    );
+    for (let i = 1; i < 9; i++) {
+      console.log("The Planet information for ", i, "th planet is = ", await universeAliceContract.planets(i));
+    }
+    assert.equal(battleAfterJoin.creator, this.signers.alice.address, "Creator should be deployer");
+    assert.equal(battleAfterJoin.joiner, this.signers.bob.address, "Joiner should be tester");
+    assert.equal(battleAfterJoin.isActive, true, "Battle should be active");
+  });
 
-  // it("It should be able to log planet information", async function () {
-  //   const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
-  //   const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
-  //   const keyword = "battle1";
-  //   const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
-  //   await createTx.wait();
+  it("It should be able to log planet information", async function () {
+    const alicePlanetBattle = await this.planetBattle.connect(this.signers.alice);
+    const bobPlanetBattle = await this.planetBattle.connect(this.signers.bob);
+    const keyword = "battle1";
+    const createTx = await alicePlanetBattle.createBattle(keyword, { gasLimit: 2800000 });
+    await createTx.wait();
 
-  //   const battle = await alicePlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Creation:", battle);
+    const battle = await alicePlanetBattle.battles(keyword);
+    console.log("Battle Details after Creation:", battle);
 
-  //   const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
-  //   await joinTx.wait();
+    const joinTx = await bobPlanetBattle.joinBattle(keyword, { gasLimit: 4000000 });
+    await joinTx.wait();
 
-  //   await awaitAllDecryptionResults();
-  //   await new Promise((res) => setTimeout(() => res(null), 5000));
+    await awaitAllDecryptionResults();
+    await new Promise((res) => setTimeout(() => res(null), 5000));
 
-  //   const battleAfterJoin = await bobPlanetBattle.battles(keyword);
-  //   console.log("Battle Details after Joining:", battleAfterJoin);
+    const battleAfterJoin = await bobPlanetBattle.battles(keyword);
+    console.log("Battle Details after Joining:", battleAfterJoin);
 
-  //   const universeAliceContract = await ethers.getContractAt(
-  //     "Universe",
-  //     battleAfterJoin.universeAddress,
-  //     this.signers.alice,
-  //   );
-  //   for (let i = 1; i < 9; i++) {
-  //     console.log("The Planet information for ", i, "th planet is = ", await universeAliceContract.planets(i));
-  //   }
-  // });
+    const universeAliceContract = await ethers.getContractAt(
+      "Universe",
+      battleAfterJoin.universeAddress,
+      this.signers.alice,
+    );
+    for (let i = 1; i < 9; i++) {
+      console.log("The Planet information for ", i, "th planet is = ", await universeAliceContract.planets(i));
+    }
+  });
 });
