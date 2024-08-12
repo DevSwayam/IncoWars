@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "fhevm/lib/TFHE.sol";
 import "fhevm/gateway/GatewayCaller.sol";
+import "./PlanetBattle.sol";
 
 contract Universe is GatewayCaller {
     struct Planet {
@@ -14,7 +15,7 @@ contract Universe is GatewayCaller {
         uint256 energyGenerationRate; // Energy generation rate per second
         uint256 lastCalculatedTimestamp; // Timestamp of the last energy calculation
         address owner; // Owner of the planet
-        euint16 randomNumber;
+        euint16 randomNumber; //
     }
 
     struct playerInfo {
@@ -25,6 +26,7 @@ contract Universe is GatewayCaller {
 
     mapping(uint256 => uint256) public requestIdToPlanetId;
 
+    address public factoryContract;
     address public player1; // Address of player 1
     address public player2; // Address of player 2
     mapping(uint256 => Planet) public planets; // Mapping of planet IDs to Planet structs
@@ -34,6 +36,7 @@ contract Universe is GatewayCaller {
     bool public gameEnded; // Flag indicating if the game has ended
     address public winner; // Address of the winner of the game
     mapping(address => playerInfo) public playerAddressToPlayerInfo;
+    string public battleString;
 
     event PlanetCaptured(uint256 planetId, address owner); // Event emitted when a planet is captured
     event EnergyTransferred(uint256 fromPlanetId, uint256 toPlanetId, uint256 energy); // Event emitted when energy is transferred between planets
@@ -45,13 +48,14 @@ contract Universe is GatewayCaller {
      * @param _player2 Address of player 2
      * @param coordinates Array of coordinates for initializing planets
      */
-    constructor(address _player1, address _player2, uint256[] memory coordinates) {
+    constructor(address _player1, address _player2, uint256[] memory coordinates, string memory _battleString) {
         require(coordinates.length == 16, "Invalid coordinates length");
-
+        factoryContract = msg.sender;
         player1 = _player1;
         player2 = _player2;
         gameStartTime = block.timestamp;
         gameEnded = false;
+        battleString = _battleString;
 
         playerAddressToPlayerInfo[_player1] = playerInfo({
             initialEnergy: 1000,
@@ -77,7 +81,7 @@ contract Universe is GatewayCaller {
                 owner: address(0),
                 randomNumber: TFHE.randEuint16() // i get 8 bits here i will use them to split in 3 parts 3bits  for attacking and 3 bits for defence power and 2 bits for energy generation rate
             });
-            TFHE.allow(planets[i+1].randomNumber, address(this));
+            TFHE.allow(planets[i + 1].randomNumber, address(this));
         }
     }
 
@@ -92,25 +96,39 @@ contract Universe is GatewayCaller {
         _;
     }
 
-    /**
-     * @dev Function to calculate the current energy of a planet based on its last calculated timestamp.
-     * @param planetId ID of the planet
-     * @return Current energy of the planet
-     */
-    function calculateEnergy(uint256 planetId) internal view returns (uint256) {
-        Planet memory planet = planets[planetId];
-        uint256 currentTimestamp = block.timestamp;
-        if (planet.lastCalculatedTimestamp == 0) {
-            return planet.baseEnergy;
+    // Router Function to attack any planet
+    function attackPlanet(uint256 fromPlanetId, uint256 toPlanetId) public {
+        if (fromPlanetId == 0) {
+            // Check if the attack is from the home planet
+            planets[toPlanetId].baseEnergy = calculateEnergy(toPlanetId);
+            capturePlanetUsingHomePlanet(toPlanetId);
         } else {
-            uint256 timeElapsed = currentTimestamp - planet.lastCalculatedTimestamp;
-            return planet.baseEnergy + (planet.energyGenerationRate * timeElapsed);
+            // If not attack is from one planet(owned) to another planet
+            int256 distance = calculateDistance(
+                planets[fromPlanetId].x,
+                planets[fromPlanetId].y,
+                planets[toPlanetId].x,
+                planets[toPlanetId].y
+            );
+            planets[fromPlanetId].baseEnergy = calculateEnergy(fromPlanetId);
+            planets[toPlanetId].baseEnergy = calculateEnergy(toPlanetId);
+            capturingFromOnePlanetToOtherPlanet(fromPlanetId, toPlanetId, uint256(distance));
         }
     }
 
-    // Ok so basically this is a home planet function used to capture planet other planet
-    function capturePlanet(uint256 planetId) internal checkGameEnd {
-        require(!gameEnded, "Game has ended"); // Do we need this? if we are using modifier
+    // Attack planet function for home planet to other planet
+    // this should be router as i should be able to capture enemies planet from home
+    function capturePlanetUsingHomePlanet(uint256 planetId) internal checkGameEnd {
+        // 1st condistion where player captures the new planet using home planet
+        if (planets[planetId].owner == address(0)) {
+            captureNewPlanetUsingHomePlanet(planetId);
+        } else {
+            // 2nd condition where player captures enemies planet
+            captureEnemiesPlanetUsingHomePlanet(planetId);
+        }
+    }
+
+    function captureNewPlanetUsingHomePlanet(uint256 planetId) internal {
         require(planetId > 0 && planetId <= totalPlanets, "Invalid planet ID"); // makes sense
         require(planets[planetId].owner == address(0), "Planet already captured"); // makes sense
 
@@ -129,7 +147,6 @@ contract Universe is GatewayCaller {
         planets[planetId].owner = msg.sender; // makes sense
         planets[planetId].lastCalculatedTimestamp = block.timestamp; // makes sense
 
-
         uint256[] memory cts = new uint256[](1);
         cts[0] = Gateway.toUint256(planets[planetId].randomNumber);
         uint256 requestID = Gateway.requestDecryption(
@@ -144,12 +161,105 @@ contract Universe is GatewayCaller {
         emit PlanetCaptured(planetId, msg.sender);
     }
 
+    function captureEnemiesPlanetUsingHomePlanet(uint256 planetId) internal {
+        require(planets[planetId].owner != address(0), "Planet is still not captured"); // makes sense
+        require(planetId > 0 && planetId <= totalPlanets, "Invalid planet ID"); // makes sense
+
+        playerInfo storage player = playerAddressToPlayerInfo[msg.sender]; // Ok we get player
+        int256 distance = calculateDistance( // calculate the distance
+            player.homeCoordinateX,
+            player.homeCoordinateY,
+            planets[planetId].x,
+            planets[planetId].y
+        );
+        uint256 requiredEnergy = planets[planetId].baseEnergy * uint256(distance) * planets[planetId].defensePower; // calculate required energy
+
+        require(player.initialEnergy >= requiredEnergy, "Not enough energy to capture the planet"); // ok this makes sense
+
+        player.initialEnergy -= requiredEnergy; // Deduct the energy used to capture the planet
+        planets[planetId].owner = msg.sender; // makes sense
+        planets[planetId].lastCalculatedTimestamp = block.timestamp; // makes sense
+
+        emit PlanetCaptured(planetId, msg.sender);
+    }
+
+    /**
+     * @dev Function for a player to transfer energy from one captured planet to another.
+     * @param fromPlanetId ID of the planet from which energy is transferred
+     * @param toPlanetId ID of the planet to which energy is transferred
+     * @param distance Distance between the two planets
+     */
+    function capturingFromOnePlanetToOtherPlanet(
+        uint256 fromPlanetId,
+        uint256 toPlanetId,
+        uint256 distance
+    ) internal checkGameEnd {
+        require(!gameEnded, "Game has ended");
+        require(planets[fromPlanetId].owner == msg.sender, "You do not own the from planet");
+        require(planets[toPlanetId].owner != msg.sender, "You already own the to planet");
+
+        uint256 effectiveEnergy = (planets[fromPlanetId].baseEnergy * planets[fromPlanetId].attackingPower);
+        uint256 requiredEnergy = calculateEnergy(toPlanetId) * distance * planets[toPlanetId].defensePower;
+
+        if (planets[toPlanetId].owner == address(0)) {
+            // Capturing a new planet
+            require(effectiveEnergy >= requiredEnergy, "Not enough effective energy to capture the planet");
+            capturingPlanetForFirstTime(toPlanetId);
+        } else {
+            // Capturing an enemy's planet
+            require(effectiveEnergy >= requiredEnergy, "Not enough effective energy to conquer the planet");
+            capturingEnemiesPlanet(toPlanetId);
+        }
+
+        planets[fromPlanetId].baseEnergy -= requiredEnergy;
+        emit EnergyTransferred(fromPlanetId, toPlanetId, requiredEnergy);
+    }
+
+    function capturingPlanetForFirstTime(uint256 planetId) internal {
+        planets[planetId].owner = msg.sender;
+        planets[planetId].lastCalculatedTimestamp = block.timestamp;
+        uint256[] memory cts = new uint256[](1);
+        cts[0] = Gateway.toUint256(planets[planetId].randomNumber);
+        uint256 requestID = Gateway.requestDecryption(
+            cts,
+            this.randonNumberCallBackResolver.selector,
+            0,
+            block.timestamp + 100,
+            false
+        );
+        requestIdToPlanetId[requestID] = planetId;
+        emit PlanetCaptured(planetId, msg.sender);
+    }
+
+    function capturingEnemiesPlanet(uint256 planetId) internal {
+        planets[planetId].owner = msg.sender;
+        planets[planetId].lastCalculatedTimestamp = block.timestamp;
+        emit PlanetCaptured(planetId, msg.sender);
+    }
+
+    // Helpers
+    /**
+     * @dev Function to calculate the current energy of a planet based on its last calculated timestamp.
+     * @param planetId ID of the planet
+     * @return Current energy of the planet
+     */
+    function calculateEnergy(uint256 planetId) public view returns (uint256) {
+        Planet memory planet = planets[planetId];
+        uint256 currentTimestamp = block.timestamp;
+        if (planet.lastCalculatedTimestamp == 0) {
+            return planet.baseEnergy;
+        } else {
+            uint256 timeElapsed = currentTimestamp - planet.lastCalculatedTimestamp;
+            return planet.baseEnergy + (planet.energyGenerationRate * timeElapsed);
+        }
+    }
+
     function randonNumberCallBackResolver(uint256 requestID, uint16 decryptedInput) public onlyGateway returns (bool) {
         uint256 planetId = requestIdToPlanetId[requestID];
         (uint8 attackingPower, uint8 defensePower, uint8 energyGenerationRate, ) = splitRandomNumber(decryptedInput);
-        planets[planetId].attackingPower = (attackingPower % 5) + 1;
+        planets[planetId].attackingPower = (attackingPower % 10) + 1;
         planets[planetId].defensePower = (defensePower % 5) + 1;
-        planets[planetId].energyGenerationRate = (energyGenerationRate % 5) + 1;
+        planets[planetId].energyGenerationRate = (energyGenerationRate % 10) + 1;
         return true;
     }
 
@@ -173,85 +283,6 @@ contract Universe is GatewayCaller {
     }
 
     /**
-     * @dev Function for a player to transfer energy from one captured planet to another.
-     * @param fromPlanetId ID of the planet from which energy is transferred
-     * @param toPlanetId ID of the planet to which energy is transferred
-     * @param energy Energy to transfer between planets
-     * @param distance Distance between the two planets
-     */
-    function attackPlanetToPlanet(
-        uint256 fromPlanetId,
-        uint256 toPlanetId,
-        uint256 energy,
-        uint256 distance
-    ) internal checkGameEnd {
-        require(!gameEnded, "Game has ended");
-        require(planets[fromPlanetId].owner == msg.sender, "You do not own the from planet");
-        require(planets[toPlanetId].owner != msg.sender, "You already own the to planet");
-
-        uint256 fromPlanetEnergy = calculateEnergy(fromPlanetId);
-        require(energy <= fromPlanetEnergy, "Not enough energy on from planet");
-
-        uint256 effectiveEnergy = energy + ((energy * planets[fromPlanetId].attackingPower) / 100);
-        uint256 requiredEnergy = calculateEnergy(toPlanetId) * distance * planets[toPlanetId].defensePower;
-
-        if (planets[toPlanetId].owner == address(0)) {
-            // Capturing a new planet
-            require(effectiveEnergy >= requiredEnergy, "Not enough effective energy to capture the planet");
-            capturingPlanetForFirstTime(toPlanetId);
-        } else {
-            // Capturing an enemy's planet
-            require(effectiveEnergy >= requiredEnergy * 2, "Not enough effective energy to conquer the planet");
-            capturingEnemiesPlanet(toPlanetId);
-        }
-
-        planets[fromPlanetId].baseEnergy -= energy;
-        emit EnergyTransferred(fromPlanetId, toPlanetId, energy);
-    }
-
-    function capturingPlanetForFirstTime(uint256 planetId) internal {
-        // Assume the decryption and random number splitting logic is handled here
-        // @dev need async decrypt
-        // planets[planetId].attackingPower = uint256(planets[planetId].randomNumber & 0x07); // last 3 bits
-        // planets[planetId].defensePower = uint256((planets[planetId].randomNumber >> 3) & 0x07); // next 3 bits
-        // planets[planetId].energyGenerationRate = uint256((planets[planetId].randomNumber >> 6) & 0x03); // next 2 bits
-
-        planets[planetId].owner = msg.sender;
-        planets[planetId].lastCalculatedTimestamp = block.timestamp;
-        uint256[] memory cts = new uint256[](1);
-        cts[0] = Gateway.toUint256(planets[planetId].randomNumber);
-        uint256 requestID = Gateway.requestDecryption(
-            cts,
-            this.randonNumberCallBackResolver.selector,
-            0,
-            block.timestamp + 100,
-            false
-        );
-        requestIdToPlanetId[requestID] = planetId;
-        emit PlanetCaptured(planetId, msg.sender);
-    }
-
-    function capturingEnemiesPlanet(uint256 planetId) internal {
-        planets[planetId].owner = msg.sender;
-    }
-
-    function attackPlanet(uint256 fromPlanetId, uint256 toPlanetId) public {
-        if (fromPlanetId == 0) {
-            // Check if the attack is from the home planet
-            capturePlanet(toPlanetId);
-        } else {
-            int256 distance = calculateDistance(
-                planets[fromPlanetId].x,
-                planets[fromPlanetId].y,
-                planets[toPlanetId].x,
-                planets[toPlanetId].y
-            );
-            uint256 energy = planets[fromPlanetId].baseEnergy; // Assuming the baseEnergy is available energy to attack
-            attackPlanetToPlanet(fromPlanetId, toPlanetId, energy, uint256(distance));
-        }
-    }
-
-    /**
      * @dev Function to end the game and determine the winner based on captured planets.
      */
     function endGame() public {
@@ -261,6 +292,8 @@ contract Universe is GatewayCaller {
         gameEnded = true;
         winner = determineWinner();
         emit BattleEnded(winner);
+        PlanetBattle _planetBattleContract = PlanetBattle(factoryContract);
+        _planetBattleContract.endBattle(battleString, winner);
     }
 
     /**
@@ -304,6 +337,49 @@ contract Universe is GatewayCaller {
         while (z < y) {
             y = z;
             z = (x / z + z) / 2;
+        }
+    }
+
+    function isAttackPossible(uint256 fromPlanetId, uint256 toPlanetId) public view returns (bool) {
+        int256 distance;
+        if (fromPlanetId == 0) {
+            playerInfo storage player = playerAddressToPlayerInfo[msg.sender]; // Ok we get player
+            distance = calculateDistance( // calculate the distance
+                player.homeCoordinateX,
+                player.homeCoordinateY,
+                planets[toPlanetId].x,
+                planets[toPlanetId].y
+            );
+            uint256 requiredEnergy = calculateEnergy(toPlanetId) * uint256(distance) * planets[toPlanetId].defensePower;
+            if (playerAddressToPlayerInfo[msg.sender].initialEnergy >= requiredEnergy) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            distance = calculateDistance(
+                planets[fromPlanetId].x,
+                planets[fromPlanetId].y,
+                planets[toPlanetId].x,
+                planets[toPlanetId].y
+            );
+            uint256 requiredEnergy = calculateEnergy(toPlanetId) * uint256(distance) * planets[toPlanetId].defensePower;
+            uint256 currentEnergy = calculateEnergy(fromPlanetId) * planets[fromPlanetId].attackingPower;
+            if (currentEnergy > requiredEnergy) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    function calculateTimestamp(uint256 planetId) public view returns (uint256) {
+        Planet memory planet = planets[planetId];
+        uint256 currentTimestamp = block.timestamp;
+        if (planet.lastCalculatedTimestamp == 0) {
+            return 0;
+        } else {
+            return currentTimestamp - planet.lastCalculatedTimestamp;
         }
     }
 }

@@ -6,7 +6,7 @@ import "fhevm/gateway/GatewayCaller.sol";
 import "./Universe.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-// @dev dont forgot to delete battle string after battle is reolved or terminated
+// @dev dont forgot to delete battle string after battle is resolved or terminated
 
 contract PlanetBattle is GatewayCaller, ERC721 {
     uint256 public tokenCounter;
@@ -22,7 +22,7 @@ contract PlanetBattle is GatewayCaller, ERC721 {
 
     mapping(string => Battle) public battles;
     mapping(uint256 => string) public requestIdToBattleString;
-    address[] public deployedUniverses;
+    mapping(string => address) public battleStringToContractAddress;
 
     event BattleCreated(string keyword, address creator);
     event BattleJoined(string keyword, address joiner);
@@ -93,8 +93,8 @@ contract PlanetBattle is GatewayCaller, ERC721 {
         require(battle.isActive, "Battle is not active");
 
         uint256[] memory coordinates = generateRandomCoordinates(_randomNumber, _randomNumber1);
-        address newUniverse = address(new Universe(battle.creator, battle.joiner, coordinates));
-        deployedUniverses.push(newUniverse);
+        address newUniverse = address(new Universe(battle.creator, battle.joiner, coordinates, _keyword));
+        battleStringToContractAddress[_keyword] = newUniverse;
         battle.universeAddress = newUniverse;
 
         emit UniverseDeployed(newUniverse, _keyword);
@@ -130,28 +130,35 @@ contract PlanetBattle is GatewayCaller, ERC721 {
         return coordinates;
     }
 
-    function endBattle(string memory _keyword, address _winner) public {
+    modifier onlyUniverseContrac(string memory _keyword) {
+        if (battleStringToContractAddress[_keyword] != msg.sender) {
+            revert();
+        }
+        _;
+    }
+
+    // Modifier here
+    function endBattle(string memory _keyword, address _winner) public onlyUniverseContrac(_keyword) {
         Battle storage battle = battles[_keyword];
         require(battle.isActive, "Battle is not active");
         require(battle.universeAddress != address(0), "Universe not deployed");
-
+        battleStringToContractAddress[_keyword] = address(0);
         battle.isActive = false;
-        battle.winner = _winner;
+        battle.creator = address(0);
+        battle.joiner = address(0);
+        battle.universeAddress = address(0);
+        battle.winner = address(0);
 
         emit BattleEnded(_keyword, _winner);
 
-        mintNFT(_keyword, battle.creator, battle.joiner, _winner);
+        mintNFT(_winner);
     }
 
-    function mintNFT(string memory _keyword, address _creator, address _joiner, address _winner) internal {
+    function mintNFT(address _winner) internal {
         uint256 newItemId = tokenCounter;
         _safeMint(_winner, newItemId);
         tokenCounter++;
 
         // Optionally, you can store more metadata on-chain or off-chain
-    }
-
-    function getDeployedUniverses() public view returns (address[] memory) {
-        return deployedUniverses;
     }
 }
